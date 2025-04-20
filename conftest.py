@@ -3,23 +3,61 @@ import os
 from app import create_app, db as _db # Rename db to avoid pytest fixture conflict
 from app.models import User, Track, Playlist, playlist_tracks # Import models for direct use in tests
 from app.extensions import bcrypt # Import bcrypt for direct password setting in fixtures
+import tempfile # For creating temporary directories in tests
+import shutil # For cleaning up directories
+
+# Define test defaults easily
+TEST_DEFAULTS = {
+    'TESTING': True,
+    'SQLALCHEMY_TRACK_MODIFICATIONS': False,
+    'SECRET_KEY': 'test-secret-key',
+    'JWT_SECRET_KEY': 'test-jwt-secret-key',
+    'BCRYPT_LOG_ROUNDS': 4,
+    # --- ADD TEST DEFAULTS FOR MISSING CONFIGS ---
+    'CELERY_BROKER_URL': 'memory://', # Use in-memory broker for tests (no redis needed)
+    'CELERY_RESULT_BACKEND': 'cache+memory://', # Use in-memory cache backend
+    'CELERY_TASK_ALWAYS_EAGER': True, # IMPORTANT: Execute tasks synchronously in tests
+    'CELERY_IMPORTS': ('app.tasks',),
+    # Use pytest's tmp_path fixture for file paths if possible, or define static ones
+    # Note: tmp_path is function-scoped, app is session-scoped. Need a different approach
+    # Let's use static relative paths for simplicity, assuming tests run from project root
+    'UPLOAD_TEMP_DIR': './test_temp_uploads',
+    'LOCAL_STORAGE_OUTPUT_DIR': './test_processed_audio',
+    'LOCAL_STORAGE_URL_BASE': '/processed_test/',
+    'FFMPEG_PATH': 'ffmpeg', # Assume available for task tests (or mock)
+    'FFPROBE_PATH': 'ffprobe',# Assume available for task tests (or mock)
+    'FFMPEG_DEFAULT_AUDIO_CODEC': 'aac',
+    'FFMPEG_DEFAULT_AUDIO_BITRATE': '128k', # Use lower bitrate for faster tests
+    'FFMPEG_DEFAULT_SEGMENT_DURATION': '2', # Use shorter segments for faster tests
+    'FFMPEG_ALLOWED_FORMATS': ['HLS', 'DASH'],
+    'UPLOAD_PLUGIN': 'local',
+    'PROCESSING_ENABLED': True, # Usually True for testing processing logic
+    'FFMPEG_ENABLED': True, # Usually True for testing processing logic
+}
 
 @pytest.fixture(scope='session')
 def app():
     """Create and configure a new app instance for each test session."""
+    # Use in-memory SQLite for tests by default
     test_db_url = 'sqlite:///:memory:'
+    test_config = TEST_DEFAULTS.copy() # Start with defaults
+    test_config['SQLALCHEMY_DATABASE_URI'] = test_db_url # Override DB URI
 
-    app = create_app(config_class=type('TestConfig', (object,), {
-        'TESTING': True,
-        'SQLALCHEMY_DATABASE_URI': test_db_url,
-        'SQLALCHEMY_TRACK_MODIFICATIONS': False,
-        'SECRET_KEY': 'test-secret-key',
-        'JWT_SECRET_KEY': 'test-jwt-secret-key',
-        'BCRYPT_LOG_ROUNDS': 4
-    }))
+    # Create directories needed for this test session
+    os.makedirs(test_config['UPLOAD_TEMP_DIR'], exist_ok=True)
+    os.makedirs(test_config['LOCAL_STORAGE_OUTPUT_DIR'], exist_ok=True)
 
-    with app.app_context():
-        yield app
+    # Create the app instance using the combined test config
+    app_instance = create_app(config_class=type('TestConfig', (object,), test_config))
+
+    with app_instance.app_context():
+        _db.create_all() # Create tables once per session
+        yield app_instance # provide the app object to the tests
+        _db.drop_all() # Drop tables once per session
+
+    # Cleanup directories created for the session
+    shutil.rmtree(test_config['UPLOAD_TEMP_DIR'], ignore_errors=True)
+    shutil.rmtree(test_config['LOCAL_STORAGE_OUTPUT_DIR'], ignore_errors=True)
 
 @pytest.fixture(scope='function')
 def db(app):
