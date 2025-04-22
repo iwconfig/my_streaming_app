@@ -10,29 +10,21 @@ class Config:
 
     # --- Database Config ---
     # Default to a local SQLite file if DATABASE_URL is not set in .env
-    DEFAULT_SQLITE_PATH = os.path.join(os.path.dirname(__file__), 'app_data.db') # DB in project root
+    DEFAULT_SQLITE_PATH = os.path.join(os.path.dirname(__file__), 'data', 'app.db') # DB in data subdirectory
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL', f'sqlite:///{DEFAULT_SQLITE_PATH}')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    # Use this for PostgreSQL Enum support if needed, less relevant for SQLite
-    # SQLALCHEMY_NATIVE_UNICODE = False
 
     # --- Celery Configuration ---
     CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/0')
     CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', 'redis://localhost:6379/1')
-    # Define task imports (points to the tasks module)
     CELERY_IMPORTS = ('app.tasks',)
 
     # --- File Handling & Processing Configuration ---
     # Base directory to temporarily store uploaded files before processing
-    UPLOAD_TEMP_DIR = os.environ.get('UPLOAD_TEMP_DIR', os.path.join(os.path.dirname(__file__), 'temp_uploads'))
+    UPLOAD_TEMP_DIR = os.environ.get('UPLOAD_TEMP_DIR', os.path.join(os.path.dirname(__file__), 'data', 'temp_uploads'))
     # Base directory where FFmpeg will write final segmented output for the 'local' uploader
-    # This directory *must* be served by an external webserver (Nginx, Caddy, etc.)
-    # Or could be an Rclone FUSE mount point served by a webserver.
-    LOCAL_STORAGE_OUTPUT_DIR = os.environ.get('LOCAL_STORAGE_OUTPUT_DIR', os.path.join(os.path.dirname(__file__), 'processed_audio'))
-    # Base URL corresponding to LOCAL_STORAGE_OUTPUT_DIR (as configured in the external webserver)
-    # IMPORTANT: Must end WITH a slash if subdirs are used, or NO slash if files are directly under it.
-    # Example: If Nginx serves LOCAL_STORAGE_OUTPUT_DIR at http://myapp.com/media/, set this to '/media/'
-    # Example: If files are directly at root, maybe just '/' - depends on serving setup.
+    LOCAL_STORAGE_OUTPUT_DIR = os.environ.get('LOCAL_STORAGE_OUTPUT_DIR', os.path.join(os.path.dirname(__file__), 'data', 'processed_audio'))
+    # Base URL corresponding to LOCAL_STORAGE_OUTPUT_DIR
     LOCAL_STORAGE_URL_BASE = os.environ.get('LOCAL_STORAGE_URL_BASE', '/processed/')
 
     # Path to the ffmpeg executable

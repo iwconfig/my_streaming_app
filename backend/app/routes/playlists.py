@@ -2,8 +2,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.models import Playlist, Track, playlist_tracks
 from app.schemas import (
-    PlaylistSchema, PlaylistCreateSchema, PlaylistUpdateSchema,
-    PlaylistTrackSchema, PlaylistTrackOrderSchema, TrackSchema
+    PlaylistSchema, PlaylistCreateSchema, PlaylistUpdateSchema, PlaylistTrackSchema, PlaylistTrackOrderSchema, TrackSchema
 )
 from app.extensions import db
 from marshmallow import ValidationError

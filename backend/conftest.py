@@ -1,10 +1,10 @@
 import pytest
 import os
-from app import create_app, db as _db # Rename db to avoid pytest fixture conflict
-from app.models import User, Track, Playlist, playlist_tracks # Import models for direct use in tests
-from app.extensions import bcrypt # Import bcrypt for direct password setting in fixtures
-import tempfile # For creating temporary directories in tests
-import shutil # For cleaning up directories
+from app import create_app, db as _db
+from app.models import User, Track, Playlist, playlist_tracks
+from app.extensions import bcrypt
+import tempfile
+import shutil
 
 # Define test defaults easily
 TEST_DEFAULTS = {
@@ -13,26 +13,23 @@ TEST_DEFAULTS = {
     'SECRET_KEY': 'test-secret-key',
     'JWT_SECRET_KEY': 'test-jwt-secret-key',
     'BCRYPT_LOG_ROUNDS': 4,
-    # --- ADD TEST DEFAULTS FOR MISSING CONFIGS ---
-    'CELERY_BROKER_URL': 'memory://', # Use in-memory broker for tests (no redis needed)
-    'CELERY_RESULT_BACKEND': 'cache+memory://', # Use in-memory cache backend
-    'CELERY_TASK_ALWAYS_EAGER': True, # IMPORTANT: Execute tasks synchronously in tests
+    'CELERY_BROKER_URL': 'memory://',
+    'CELERY_RESULT_BACKEND': 'cache+memory://',
+    'CELERY_TASK_ALWAYS_EAGER': True,
     'CELERY_IMPORTS': ('app.tasks',),
-    # Use pytest's tmp_path fixture for file paths if possible, or define static ones
-    # Note: tmp_path is function-scoped, app is session-scoped. Need a different approach
-    # Let's use static relative paths for simplicity, assuming tests run from project root
-    'UPLOAD_TEMP_DIR': './test_temp_uploads',
-    'LOCAL_STORAGE_OUTPUT_DIR': './test_processed_audio',
+    # Use data subdirectory for test files
+    'UPLOAD_TEMP_DIR': os.path.join(os.path.dirname(__file__), 'data', 'test_temp_uploads'),
+    'LOCAL_STORAGE_OUTPUT_DIR': os.path.join(os.path.dirname(__file__), 'data', 'test_processed_audio'),
     'LOCAL_STORAGE_URL_BASE': '/processed_test/',
-    'FFMPEG_PATH': 'ffmpeg', # Assume available for task tests (or mock)
-    'FFPROBE_PATH': 'ffprobe',# Assume available for task tests (or mock)
+    'FFMPEG_PATH': 'ffmpeg',
+    'FFPROBE_PATH': 'ffprobe',
     'FFMPEG_DEFAULT_AUDIO_CODEC': 'aac',
-    'FFMPEG_DEFAULT_AUDIO_BITRATE': '128k', # Use lower bitrate for faster tests
-    'FFMPEG_DEFAULT_SEGMENT_DURATION': '2', # Use shorter segments for faster tests
+    'FFMPEG_DEFAULT_AUDIO_BITRATE': '128k',
+    'FFMPEG_DEFAULT_SEGMENT_DURATION': '2',
     'FFMPEG_ALLOWED_FORMATS': ['HLS', 'DASH'],
     'UPLOAD_PLUGIN': 'local',
-    'PROCESSING_ENABLED': True, # Usually True for testing processing logic
-    'FFMPEG_ENABLED': True, # Usually True for testing processing logic
+    'PROCESSING_ENABLED': True,
+    'FFMPEG_ENABLED': True,
 }
 
 @pytest.fixture(scope='session')
