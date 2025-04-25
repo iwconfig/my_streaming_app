@@ -157,15 +157,40 @@ def process_audio_task(self, track_id: int, temp_input_path: str, output_format:
                 segment_filename_template = os.path.join(processing_output_dir, "segment%03d.ts")
                 cmd = [ ffmpeg_path, '-y', '-i', temp_input_path, '-map', '0:a:0', '-c:a', codec, '-b:a', bitrate, '-f', 'hls', '-hls_time', str(seg_duration), '-hls_list_size', '0', '-hls_segment_filename', segment_filename_template, '-start_number', '0', manifest_filepath ]
             elif output_format == 'DASH':
-                final_manifest_type = ManifestType.DASH; manifest_filename = f"{manifest_name_base}.mpd"
+                final_manifest_type = ManifestType.DASH
+                manifest_filename = f"{manifest_name_base}.mpd"
                 manifest_filepath = os.path.join(processing_output_dir, manifest_filename)
-                init_segment_name = os.path.join(processing_output_dir, "init-stream$RepresentationID$.m4s")
-                media_segment_name = os.path.join(processing_output_dir, "chunk-stream$RepresentationID$-$Number%05d$.m4s")
-                cmd = [ ffmpeg_path, '-y', '-i', temp_input_path, '-map', '0:a:0', '-c:a', codec, '-b:a', bitrate, '-f', 'dash', '-seg_duration', str(seg_duration), '-use_template', '1', '-use_timeline', '1', '-init_seg_name', init_segment_name, '-media_seg_name', media_segment_name, manifest_filepath ]
+                # Use only file names for DASH segment naming
+                init_segment_name = "init-stream$RepresentationID$.m4s"
+                media_segment_name = "chunk-stream$RepresentationID$-$Number%05d$.m4s"
+                # Enhanced DASH command for better audio streaming compatibility
+                cmd = [ 
+                    ffmpeg_path, '-y',
+                    '-i', temp_input_path,
+                    '-map', '0:a:0',                    # Select first audio stream
+                    '-c:a', codec,                      # Use configured audio codec (AAC)
+                    '-b:a', bitrate,                    # Use configured bitrate
+                    '-ar', '48000',                     # Set audio sample rate
+                    '-ac', '2',                         # Convert to stereo
+                    '-f', 'dash',
+                    '-seg_duration', str(seg_duration),
+                    '-use_template', '1',
+                    '-use_timeline', '1',
+                    '-adaptation_sets', 'id=0,streams=a', # Audio-only adaptation set
+                    '-single_file', '0',                # Split segments into separate files
+                    '-init_seg_name', init_segment_name,
+                    '-media_seg_name', media_segment_name,
+                    manifest_filepath
+                ]
             else: raise ValueError(f"Internal error: Reached FFmpeg step with invalid format: {output_format}")
             log.debug(f"Executing FFmpeg command: {' '.join(cmd)}")
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True, encoding='utf-8')
-            log.info(f"FFmpeg processing to {output_format} completed successfully for track {track_id}."); log.debug(f"FFmpeg stderr:\n{result.stderr}")
+            result = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8')
+            log.info(f"FFmpeg stdout:\n{result.stdout}")
+            log.info(f"FFmpeg stderr:\n{result.stderr}")
+            if result.returncode != 0:
+                log.error(f"FFmpeg failed with return code {result.returncode}")
+                raise RuntimeError(f"FFmpeg failed: {result.stderr}")
+            log.info(f"FFmpeg processing to {output_format} completed successfully for track {track_id}.")
             ffmpeg_success = True
         else: log.warning("FFmpeg processing is disabled by config."); raise RuntimeError("FFmpeg processing is disabled, cannot generate segments.")
         if ffmpeg_success and final_manifest_type:
@@ -176,7 +201,9 @@ def process_audio_task(self, track_id: int, temp_input_path: str, output_format:
             track.status = TrackStatus.READY; track.manifest_url = final_manifest_url
             track.manifest_type = final_manifest_type; track.error_message = None
             db.session.commit(); log.info(f"Track {track_id} status updated to READY.")
-            uploader.cleanup_source(processing_output_dir)
+            # # Don't cleanup processed files in development mode
+            # if not current_app.debug:
+            #     uploader.cleanup_source(processing_output_dir)
             task_successful = True # Mark as successful
         else: raise RuntimeError("Internal logic error: FFmpeg success/format type not correctly set.")
     except (subprocess.CalledProcessError, RuntimeError, ValueError, ImportError, FileNotFoundError, UploaderError) as e:

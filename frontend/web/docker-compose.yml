@@ -1,0 +1,14 @@
+version: '3.8'
+services:
+  web:
+    build: .
+    image: my_streaming_app_web
+    container_name: my_streaming_app_web
+    working_dir: /app
+    volumes:
+      - ./:/app
+    ports:
+      - "5173:5173"
+    command: ["npm", "run", "dev", "--", "--host"]
+    environment:
+      - NODE_ENV=development

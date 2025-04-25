@@ -7,8 +7,19 @@ from .routes import register_blueprints
 from . import models
 import os
 import logging # Import logging
+from logging.handlers import RotatingFileHandler
 
 log = logging.getLogger(__name__) # Get logger for __init__
+
+# Configure logging to file
+# log_file = os.path.join(os.path.dirname(__file__), '../flask.log')
+# file_handler = RotatingFileHandler(log_file, maxBytes=10240, backupCount=10)
+# file_handler.setLevel(logging.INFO)
+# file_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'))
+# log.addHandler(file_handler)
+log.setLevel(logging.INFO)
+
+log.info('Logging is set up.')
 
 def create_app(config_class=Config):
     app = Flask(__name__)
@@ -22,7 +33,15 @@ def create_app(config_class=Config):
     ma.init_app(app)
     jwt.init_app(app)
     bcrypt.init_app(app)
-    cors.init_app(app)
+    
+    # Configure CORS for development
+    cors.init_app(app, resources={
+        r"/api/*": {
+            "origins": ["http://192.168.0.189:5173"],
+            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            "allow_headers": ["Content-Type", "Authorization"]
+        }
+    })
 
     # Initialize Celery (using the existing code)
     celery.conf.update(
@@ -53,7 +72,7 @@ def create_app(config_class=Config):
     # --- Conditionally Register Development Media Server ---
     # Check if Flask is running in development mode (FLASK_ENV=development)
     # Using app.debug is a common shortcut, as it's often True in development
-    if app.debug:
+    if app.debug is True:
         try:
             # Import here only if needed
             from .routes.media import bp as media_bp

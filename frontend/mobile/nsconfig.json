@@ -1,0 +1,6 @@
+{
+  "id": "com.example.myApp",
+  "main": "app/app.js",
+  "appPath": "app",
+  "appResourcesPath": "App_Resources"
+}

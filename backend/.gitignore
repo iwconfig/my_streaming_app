@@ -1,3 +1,8 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
 # C extensions
 *.so
 
@@ -54,6 +59,10 @@ local_settings.py
 db.sqlite3
 db.sqlite3-journal
 
+# Flask stuff:
+instance/
+.webassets-cache
+
 # Environment files
 .env
 .venv
@@ -78,11 +87,12 @@ dmypy.json
 .pytype/
 .ruff_cache/
 
-# Node dependencies (for frontend)
-frontend/node_modules/
-frontend/.next/
-frontend/.nuxt/
-frontend/dist/
-frontend/build/
-frontend/sdk/
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
 
+# Backend data directories
+data/processed_audio/
+data/temp_uploads/
+data/test_processed_audio/
+data/test_temp_uploads/
